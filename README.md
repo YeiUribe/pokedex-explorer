@@ -183,3 +183,19 @@ npm run web
 La ejecución web requiere que el proyecto tenga instaladas las dependencias
 web compatibles con Expo. La aplicación móvil funciona con las dependencias
 definidas actualmente en `package.json`.
+
+## Capturas de la aplicación
+
+Las capturas de los estados principales se encuentran en
+[`assets/screenshots/`](./assets/screenshots/):
+
+1. [01_loading.png](./assets/screenshots/01_loading.png): estado de carga
+   inicial.
+2. [02_lista_cuadricula.png](./assets/screenshots/02_lista_cuadricula.png):
+   cuadrícula principal de dos columnas.
+3. [03_scroll_infinito.png](./assets/screenshots/03_scroll_infinito.png):
+   cargador de paginación al final de la lista.
+4. [04_detalle_pokemon.png](./assets/screenshots/04_detalle_pokemon.png):
+   ficha de detalle con tipos, medidas y estadísticas.
+5. [05_error_busqueda.png](./assets/screenshots/05_error_busqueda.png):
+   estado de búsqueda sin resultados.
