@@ -22,19 +22,20 @@ export const usePokemonDetail = () => {
   }, []);
 
   const searchPokemon = useCallback(async (query) => {
+    abortRef.current?.abort();
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     const sanitized = String(query ?? '').trim();
     if (!sanitized) {
+      if (!mountedRef.current) return null;
       setPokemon(null);
       setError(messageForError({ code: 'NOT_FOUND' }));
       setLoading(false);
       return null;
     }
 
-    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
 
     setLoading(true);
     setError(null);
@@ -45,7 +46,12 @@ export const usePokemonDetail = () => {
       setPokemon(data);
       return data;
     } catch (err) {
-      if (err?.code === 'CANCELLED' || requestId !== requestIdRef.current || !mountedRef.current) {
+      if (
+        err?.name === 'AbortError' ||
+        err?.code === 'CANCELLED' ||
+        requestId !== requestIdRef.current ||
+        !mountedRef.current
+      ) {
         return null;
       }
       setPokemon(null);

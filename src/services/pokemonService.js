@@ -34,7 +34,14 @@ const requestJson = async (path, externalSignal) => {
   try {
     const response = await fetch(`${BASE_URL}${path}`, { signal: controller.signal });
     if (!response.ok) {
-      throw new ApiError(response.status === 404 ? 'NOT_FOUND' : 'SERVER');
+      const { status } = response;
+      if (status === 404) {
+        throw new ApiError('NOT_FOUND', 'No se encontró el Pokémon especificado (Error 404)');
+      }
+      if (status >= 500 && status <= 599) {
+        throw new ApiError('SERVER', 'Error en el servidor de PokéAPI (Error 5xx)');
+      }
+      throw new ApiError('API_ERROR', `Error al consultar PokéAPI: código ${status}`);
     }
     return await response.json();
   } catch (error) {
@@ -58,22 +65,30 @@ const requestJson = async (path, externalSignal) => {
 
 const buildImageUrl = (id) => `${IMAGE_BASE_URL}/${id}.png`;
 
-export const fetchPokemonList = async (limit = 20, offset = 0, signal) => {
+const normalizePokemonListItem = (item) => {
+  if (!item || typeof item !== 'object') return null;
+
+  const urlParts = typeof item.url === 'string' ? item.url.split('/').filter(Boolean) : [];
+  const parsedId = Number.parseInt(urlParts[urlParts.length - 1], 10);
+  const id = Number.isFinite(parsedId) ? parsedId : null;
+  const name = typeof item.name === 'string' ? item.name : '';
+
+  if (!id || !name) return null;
+  return { id, name, imageUrl: buildImageUrl(id) };
+};
+
+export const getPokemonList = async (limit = 20, offset = 0, signal) => {
   const data = await requestJson(`/pokemon?limit=${limit}&offset=${offset}`, signal);
+  const results = Array.isArray(data?.results)
+    ? data.results.map(normalizePokemonListItem).filter(Boolean)
+    : [];
 
-  // La API devuelve la URL de cada recurso; el id numerico esta al final.
-  const results = data.results.map((item) => {
-    const urlParts = item.url.split('/').filter(Boolean);
-    const id = Number.parseInt(urlParts[urlParts.length - 1], 10);
-    return { id, name: item.name, imageUrl: buildImageUrl(id) };
-  });
-
-  return { results, next: data.next };
+  return { results, next: typeof data?.next === 'string' ? data.next : null };
 };
 
 const fetchPokemonCatalog = () => {
   if (!pokemonCatalogPromise) {
-    pokemonCatalogPromise = fetchPokemonList(POKEMON_CATALOG_LIMIT)
+    pokemonCatalogPromise = getPokemonList(POKEMON_CATALOG_LIMIT)
       .then(({ results }) => results)
       .catch((error) => {
         pokemonCatalogPromise = null;
@@ -95,20 +110,47 @@ export const searchPokemonByName = async (query, signal) => {
   return catalog.filter((pokemon) => pokemon.name.startsWith(sanitizedQuery));
 };
 
-export const fetchPokemonByNameOrId = async (query, signal) => {
+export const getPokemonDetail = async (query, signal) => {
   const sanitizedQuery = String(query ?? '').trim().toLowerCase();
   if (!sanitizedQuery) throw new ApiError('NOT_FOUND');
 
-  const data = await requestJson(`/pokemon/${encodeURIComponent(sanitizedQuery)}`, signal);
+  const identifier = /^\d+$/.test(sanitizedQuery)
+    ? sanitizedQuery
+    : encodeURIComponent(sanitizedQuery);
+  const data = await requestJson(`/pokemon/${identifier}`, signal);
+  const id = Number.isFinite(data?.id) ? data.id : null;
+  const name = typeof data?.name === 'string' ? data.name : '';
+  const types = Array.isArray(data?.types)
+    ? data.types
+        .map((entry) => entry?.type?.name)
+        .filter((type) => typeof type === 'string' && type.length > 0)
+    : [];
+  const stats = Array.isArray(data?.stats)
+    ? data.stats
+        .map((entry) => ({
+          name: typeof entry?.stat?.name === 'string' ? entry.stat.name : '',
+          value: Number.isFinite(entry?.base_stat) ? entry.base_stat : 0,
+        }))
+        .filter((stat) => stat.name)
+    : [];
+  const imageUrl =
+    typeof data?.sprites?.other?.['official-artwork']?.front_default === 'string'
+      ? data.sprites.other['official-artwork'].front_default
+      : id
+        ? buildImageUrl(id)
+        : null;
 
   return {
-    id: data.id,
-    name: data.name,
-    height: data.height / 10, // decimetros -> metros
-    weight: data.weight / 10, // hectogramos -> kilogramos
-    types: data.types.map((entry) => entry.type.name),
-    stats: data.stats.map((entry) => ({ name: entry.stat.name, value: entry.base_stat })),
-    imageUrl:
-      data.sprites?.other?.['official-artwork']?.front_default || buildImageUrl(data.id),
+    id,
+    name,
+    height: Number.isFinite(data?.height) ? data.height / 10 : 0,
+    weight: Number.isFinite(data?.weight) ? data.weight / 10 : 0,
+    types,
+    stats,
+    imageUrl,
   };
 };
+
+// Aliases conservados para los hooks y consumidores existentes.
+export const fetchPokemonList = getPokemonList;
+export const fetchPokemonByNameOrId = getPokemonDetail;

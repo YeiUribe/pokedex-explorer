@@ -6,5 +6,13 @@ const ERROR_MESSAGES = {
   SERVER: 'El servidor respondio con un error. Intentalo mas tarde.',
 };
 
-export const messageForError = (error) =>
-  ERROR_MESSAGES[error?.code] || 'Ocurrio un error inesperado. Intentalo de nuevo.';
+export const messageForError = (error) => {
+  const hasSpecificApiMessage =
+    error?.name === 'ApiError' &&
+    typeof error.message === 'string' &&
+    error.message !== error.code;
+
+  return hasSpecificApiMessage
+    ? error.message
+    : ERROR_MESSAGES[error?.code] || 'Ocurrio un error inesperado. Intentalo de nuevo.';
+};
