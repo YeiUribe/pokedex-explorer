@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  ActivityIndicator, 
-  TouchableOpacity, 
-  StyleSheet 
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import PokemonCard from '../components/PokemonCard';
 import SearchBar from '../components/SearchBar';
 import { usePokemonList } from '../hooks/usePokemonList';
+import { usePokemonSearch } from '../hooks/usePokemonSearch';
 import { colors } from '../theme/colors';
 
 export default function PokemonListScreen({ navigation }) {
@@ -19,46 +21,123 @@ export default function PokemonListScreen({ navigation }) {
     loading,
     loadingMore,
     error,
+    pageError,
     loadMorePokemons,
     retry,
   } = usePokemonList();
 
-  const [searchError, setSearchError] = useState(null);
+  const {
+    results,
+    loading: searching,
+    error: searchError,
+    runSearch,
+    clearSearch,
+  } = usePokemonSearch();
 
-  const handleSearch = (query) => {
-    if (!query || !query.trim()) {
-      setSearchError('Por favor ingresa un nombre o ID');
+  // useState: la consulta vive aquí, no dentro de SearchBar, para que no se pierda
+  // cuando la FlatList se vuelve a renderizar (paginación, errores, etc.).
+  const [query, setQuery] = useState('');
+  const [inputError, setInputError] = useState(null);
+
+  const searchActive = results !== null;
+  const data = searchActive ? results : pokemons;
+
+  const handleSearch = () => {
+    if (searching) return;
+    if (!query.trim()) {
+      setInputError('Escribe un nombre o un número de Pokémon.');
       return;
     }
-    setSearchError(null);
-    navigation.navigate('PokemonDetail', { identifier: query.trim().toLowerCase() });
+    setInputError(null);
+    runSearch(query);
   };
 
-  const handleSelectPokemon = (pokemon) => {
-    navigation.navigate('PokemonDetail', { identifier: pokemon.name || pokemon.id });
+  const handleChangeQuery = (text) => {
+    setQuery(text);
+    setInputError(null);
   };
 
+  const handleClearSearch = () => {
+    setQuery('');
+    setInputError(null);
+    clearSearch();
+  };
+
+  const handleSelectPokemon = useCallback(
+    (pokemon) => {
+      navigation.navigate('PokemonDetail', { identifier: pokemon.id });
+    },
+    [navigation]
+  );
+
+  const renderItem = useCallback(
+    ({ item }) => <PokemonCard pokemon={item} onPress={handleSelectPokemon} />,
+    [handleSelectPokemon]
+  );
+
+  const keyExtractor = useCallback((item) => String(item.id), []);
+
+  // Se pasa el elemento ya renderizado (no la función) para que React no remonte
+  // el header en cada render y el buscador no pierda el foco ni el texto.
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <Text style={styles.title}>PokéDex Explorer</Text>
-      <SearchBar onSearch={handleSearch} />
-      {searchError && (
-        <Text style={styles.searchErrorText}>{searchError}</Text>
-      )}
+      <SearchBar
+        value={query}
+        onChangeText={handleChangeQuery}
+        onSearch={handleSearch}
+        onClear={handleClearSearch}
+        loading={searching}
+      />
+      {inputError ? <Text style={styles.inlineError}>{inputError}</Text> : null}
+      {searchActive ? (
+        <Pressable style={styles.clearChip} onPress={handleClearSearch} accessibilityRole="button">
+          <Text style={styles.clearChipText}>Volver a la lista completa</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 
   const renderFooter = () => {
-    if (!loadingMore) return null;
+    if (searchActive) return null;
+    if (loadingMore) {
+      return (
+        <View style={styles.footerBox}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.footerText}>Cargando más Pokémon...</Text>
+        </View>
+      );
+    }
+    if (pageError) {
+      return (
+        <View style={styles.footerBox}>
+          <Text style={styles.inlineError}>{pageError}</Text>
+          <Pressable style={styles.retryButton} onPress={loadMorePokemons} accessibilityRole="button">
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return null;
+  };
+
+  const renderEmpty = () => {
+    if (!searchActive || searching) return null;
     return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.primary} />
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>Sin resultados</Text>
+        <Text style={styles.emptyText}>
+          {searchError || `No se encontró ningún Pokémon con "${query.trim()}".`}
+        </Text>
+        <Pressable style={styles.retryButton} onPress={handleClearSearch} accessibilityRole="button">
+          <Text style={styles.retryButtonText}>Ver todos los Pokémon</Text>
+        </Pressable>
       </View>
     );
   };
 
-  // Estado de carga inicial
-  if (loading && (!pokemons || pokemons.length === 0)) {
+  // Estado de carga inicial (solo cuando no hay nada en pantalla)
+  if (loading && !searchActive && pokemons.length === 0) {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -67,34 +146,34 @@ export default function PokemonListScreen({ navigation }) {
     );
   }
 
-  // Estado de error inicial
-  if (error && (!pokemons || pokemons.length === 0)) {
+  // Estado de error de red inicial, con reintento
+  if (error && !searchActive && pokemons.length === 0) {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <Text style={[styles.centerText, { color: colors.error }]}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={retry}>
+        <Pressable style={styles.retryButton} onPress={retry} accessibilityRole="button">
           <Text style={styles.retryButtonText}>Reintentar</Text>
-        </TouchableOpacity>
+        </Pressable>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* FlatList: grid de 2 columnas con scroll infinito y footer de paginación */}
       <FlatList
-        data={pokemons || []}
-        keyExtractor={(item) => String(item.id || item.name)}
-        renderItem={({ item }) => (
-          <PokemonCard
-            pokemon={item}
-            onPress={() => handleSelectPokemon(item)}
-          />
-        )}
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
         numColumns={2}
-        ListHeaderComponent={renderHeader}
-        ListFooterComponent={renderFooter}
-        onEndReached={loadMorePokemons}
+        columnWrapperStyle={styles.columnWrapper}
+        ListHeaderComponent={renderHeader()}
+        ListFooterComponent={renderFooter()}
+        ListEmptyComponent={renderEmpty()}
+        onEndReached={searchActive ? undefined : loadMorePokemons}
         onEndReachedThreshold={0.5}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={styles.listContent}
       />
     </SafeAreaView>
@@ -107,40 +186,79 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   headerContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    backgroundColor: colors.card,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.primary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    marginBottom: 10,
   },
   listContent: {
-    paddingHorizontal: 8,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
-  footerLoader: {
+  footerBox: {
     paddingVertical: 16,
     alignItems: 'center',
   },
-  searchErrorText: {
+  footerText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  inlineError: {
     color: colors.error,
     textAlign: 'center',
-    marginVertical: 4,
+    fontSize: 13,
+    marginTop: 6,
+    marginHorizontal: 16,
+  },
+  clearChip: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  clearChipText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  emptyContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  emptyText: {
     fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
-    padding: 20,
+    padding: 24,
   },
   centerText: {
     marginTop: 12,
@@ -149,7 +267,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    marginTop: 16,
+    marginTop: 8,
     backgroundColor: colors.primary,
     paddingVertical: 10,
     paddingHorizontal: 20,

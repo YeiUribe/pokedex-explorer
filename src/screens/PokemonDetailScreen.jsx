@@ -1,57 +1,74 @@
 import React, { useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  ScrollView, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  StyleSheet 
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+
 import StatBar from '../components/StatBar';
 import { usePokemonDetail } from '../hooks/usePokemonDetail';
 import { colors } from '../theme/colors';
+import { capitalize, formatPokemonNumber } from '../utils/format';
 
 export default function PokemonDetailScreen({ route, navigation }) {
-  const { identifier } = route.params || {};
-  const { pokemon, loading, error, searchPokemon, clearDetail } = usePokemonDetail();
+  const { identifier } = route.params ?? {};
+  const { pokemon, loading, error, searchPokemon } = usePokemonDetail();
 
+  // useEffect: carga la ficha al montar y cuando cambia el identificador.
   useEffect(() => {
     if (identifier) {
       searchPokemon(identifier);
     }
-    return () => {
-      clearDetail();
-    };
-  }, [identifier]);
+  }, [identifier, searchPokemon]);
 
-  // Estado de carga
+  const goBack = () => navigation.goBack();
+
+  const renderBackButton = () => (
+    <Pressable style={styles.backButton} onPress={goBack} accessibilityRole="button">
+      <Text style={styles.backButtonText}>← Volver a la lista</Text>
+    </Pressable>
+  );
+
+  // Salvaguarda: sin identificador no se puede consultar la API.
+  if (!identifier) {
+    return (
+      <View style={styles.centerContainer}>
+        <StatusBar style="light" />
+        <Text style={styles.feedbackText}>No se recibió el identificador del Pokémon.</Text>
+        {renderBackButton()}
+      </View>
+    );
+  }
+
+  // Estado de carga: el hook arranca en true, así no se ve el mensaje de "no encontrado".
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <StatusBar style="light" />
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.feedbackText}>Cargando información del Pokémon...</Text>
       </View>
     );
   }
 
-  // Estado de error (ej: búsqueda fallida o sin internet)
   if (error) {
     return (
       <View style={styles.centerContainer}>
+        <StatusBar style="light" />
         <Text style={[styles.feedbackText, { color: colors.error }]}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.retryButton} 
+        <Pressable
+          style={styles.retryButton}
           onPress={() => searchPokemon(identifier)}
+          accessibilityRole="button"
         >
           <Text style={styles.retryButtonText}>Reintentar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.backButton, { marginTop: 12, alignSelf: 'center' }]} 
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Volver a la lista</Text>
-        </TouchableOpacity>
+        </Pressable>
+        {renderBackButton()}
       </View>
     );
   }
@@ -59,75 +76,72 @@ export default function PokemonDetailScreen({ route, navigation }) {
   if (!pokemon) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.feedbackText}>No se encontró información del Pokémon</Text>
-        <TouchableOpacity 
-          style={[styles.backButton, { marginTop: 12, alignSelf: 'center' }]} 
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Volver a la lista</Text>
-        </TouchableOpacity>
+        <StatusBar style="light" />
+        <Text style={styles.feedbackText}>No se encontró información del Pokémon.</Text>
+        {renderBackButton()}
       </View>
     );
   }
 
-  const formattedNumber = `#${String(pokemon.id).padStart(3, '0')}`;
-  const formattedName = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
+  const formattedNumber = formatPokemonNumber(pokemon.id);
+  const formattedName = capitalize(pokemon.name);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.backButtonText}>← Volver a la lista</Text>
-      </TouchableOpacity>
+    <View style={styles.screen}>
+      {/* StatusBar clara porque el header de la pila es rojo */}
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={styles.container}>
+        {renderBackButton()}
 
-      <Image 
-        source={{ uri: pokemon.imageUrl }} 
-        style={styles.image} 
-        resizeMode="contain" 
-      />
-      <Text style={styles.number}>{formattedNumber}</Text>
-      <Text style={styles.name}>{formattedName}</Text>
+        <Image source={{ uri: pokemon.imageUrl }} style={styles.image} resizeMode="contain" />
 
-      {/* Tipos de Pokémon */}
-      <View style={styles.typesContainer}>
-        {pokemon.types.map((type) => {
-          const badgeColor = colors.types?.[type] || colors.primary;
-          return (
-            <View key={type} style={[styles.typeBadge, { backgroundColor: badgeColor }]}>
-              <Text style={styles.typeText}>{type.toUpperCase()}</Text>
-            </View>
-          );
-        })}
-      </View>
+        <Text style={styles.number}>{formattedNumber}</Text>
+        <Text style={styles.name}>{formattedName}</Text>
 
-      {/* Medidas físicas */}
-      <View style={styles.metricsRow}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>ALTURA</Text>
-          <Text style={styles.metricValue}>{pokemon.height} m</Text>
+        {/* Tipos con el color definido en el tema */}
+        <View style={styles.typesContainer}>
+          {pokemon.types.map((type) => {
+            const badgeColor = colors.types?.[type] || colors.primary;
+            return (
+              <View key={type} style={[styles.typeBadge, { backgroundColor: badgeColor }]}>
+                <Text style={styles.typeText}>{type.toUpperCase()}</Text>
+              </View>
+            );
+          })}
         </View>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>PESO</Text>
-          <Text style={styles.metricValue}>{pokemon.weight} kg</Text>
-        </View>
-      </View>
 
-      {/* Estadísticas base */}
-      <View style={styles.statsContainer}>
-        <Text style={styles.statsTitle}>Estadísticas Base</Text>
-        {pokemon.stats.map((stat) => (
-          <StatBar key={stat.name} label={stat.name} value={stat.value} />
-        ))}
-      </View>
-    </ScrollView>
+        {/* Medidas físicas ya convertidas en el servicio (dm -> m, hg -> kg) */}
+        <View style={styles.metricsRow}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>ALTURA</Text>
+            <Text style={styles.metricValue}>{pokemon.height} m</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>PESO</Text>
+            <Text style={styles.metricValue}>{pokemon.weight} kg</Text>
+          </View>
+        </View>
+
+        {/* Estadísticas base con barra de progreso */}
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsTitle}>Estadísticas Base</Text>
+          {pokemon.stats.map((stat) => (
+            <StatBar key={stat.name} label={stat.name} value={stat.value} />
+          ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     padding: 16,
+    paddingBottom: 32,
     alignItems: 'center',
     backgroundColor: colors.background,
   },
@@ -135,11 +149,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
     backgroundColor: colors.background,
   },
   feedbackText: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 12,
@@ -157,6 +171,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignSelf: 'flex-start',
+    marginTop: 12,
     marginBottom: 12,
     paddingVertical: 6,
     paddingHorizontal: 12,

@@ -1,43 +1,60 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPokemonByNameOrId } from '../services/pokemonService';
- 
+import { messageForError } from '../utils/errors';
+
 export const usePokemonDetail = () => {
   const [pokemon, setPokemon] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // Arranca en true para no mostrar el mensaje de "no encontrado" antes del primer fetch.
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
- 
-  const searchPokemon = async (query) => {
+
+  // useRef: descarta respuestas viejas cuando el usuario navega rapido entre fichas.
+  const requestIdRef = useRef(0);
+  const abortRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const searchPokemon = useCallback(async (query) => {
+    const sanitized = String(query ?? '').trim();
+    if (!sanitized) {
+      setPokemon(null);
+      setError(messageForError({ code: 'NOT_FOUND' }));
+      setLoading(false);
+      return null;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
     setLoading(true);
     setError(null);
+
     try {
-      const data = await fetchPokemonByNameOrId(query);
+      const data = await fetchPokemonByNameOrId(sanitized, controller.signal);
+      if (requestId !== requestIdRef.current || !mountedRef.current) return null;
       setPokemon(data);
       return data;
     } catch (err) {
-      if (err.message === 'NOT_FOUND') {
-        setError('El Pokémon buscado no existe.');
-      } else {
-        setError('Error al conectar con el servidor.');
+      if (err?.code === 'CANCELLED' || requestId !== requestIdRef.current || !mountedRef.current) {
+        return null;
       }
       setPokemon(null);
+      setError(messageForError(err));
       return null;
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current && mountedRef.current) setLoading(false);
     }
-  };
- 
-  const clearDetail = () => {
-    setPokemon(null);
-    setError(null);
-  };
- 
-  return {
-    pokemon,
-    loading,
-    error,
-    searchPokemon,
-    clearDetail,
-    setPokemonDirect: setPokemon,
-  };
+  }, []);
+
+  return { pokemon, loading, error, searchPokemon };
 };
- 
