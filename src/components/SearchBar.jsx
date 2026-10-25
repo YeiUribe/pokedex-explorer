@@ -18,7 +18,7 @@ export default function SearchBar({ value, onChangeText, onSearch, onClear, load
         <Ionicons name="search" size={18} color={colors.textSecondary} />
         <TextInput
           style={styles.input}
-          placeholder="Busca por nombre o número..."
+          placeholder="Nombre, primeras letras o número..."
           placeholderTextColor={colors.textSecondary}
           value={value}
           onChangeText={onChangeText}
@@ -27,7 +27,7 @@ export default function SearchBar({ value, onChangeText, onSearch, onClear, load
           returnKeyType="search"
           onSubmitEditing={onSearch}
           editable={!loading}
-          accessibilityLabel="Buscar Pokémon por nombre o número"
+          accessibilityLabel="Buscar Pokémon por nombre, primeras letras o número"
         />
         {value ? (
           <Pressable

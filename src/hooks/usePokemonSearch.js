@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchPokemonByNameOrId } from '../services/pokemonService';
+import { fetchPokemonByNameOrId, searchPokemonByName } from '../services/pokemonService';
 import { messageForError } from '../utils/errors';
 
 // Busqueda de la pantalla de lista: devuelve el resultado para mostrarlo como tarjeta.
 // results === null significa "no hay busqueda activa" (se ve la lista paginada).
+//
+// Los nombres admiten prefijos; las consultas numericas siguen buscando un id exacto.
 export const usePokemonSearch = () => {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -32,12 +34,15 @@ export const usePokemonSearch = () => {
     setError(null);
 
     try {
-      const data = await fetchPokemonByNameOrId(query, controller.signal);
-      if (requestId !== requestIdRef.current || !mountedRef.current) return;
-      setResults([data]);
+      const normalizedQuery = String(query ?? '').trim().toLowerCase();
+      const data = /^\d+$/.test(normalizedQuery)
+        ? [await fetchPokemonByNameOrId(normalizedQuery, controller.signal)]
+        : await searchPokemonByName(normalizedQuery, controller.signal);
+      if (requestId !== requestIdRef.current || !mountedRef.current) return null;
+      setResults(data);
     } catch (err) {
       if (err?.code === 'CANCELLED' || requestId !== requestIdRef.current || !mountedRef.current) {
-        return;
+        return null;
       }
       setResults([]);
       setError(messageForError(err));

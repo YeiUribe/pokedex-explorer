@@ -2,6 +2,9 @@ const BASE_URL = 'https://pokeapi.co/api/v2';
 const IMAGE_BASE_URL =
   'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
 const REQUEST_TIMEOUT_MS = 10000;
+const POKEMON_CATALOG_LIMIT = 10000;
+
+let pokemonCatalogPromise;
 
 // Error con codigo semantico: el servicio informa el tipo, la UI decide el mensaje.
 export class ApiError extends Error {
@@ -66,6 +69,30 @@ export const fetchPokemonList = async (limit = 20, offset = 0, signal) => {
   });
 
   return { results, next: data.next };
+};
+
+const fetchPokemonCatalog = () => {
+  if (!pokemonCatalogPromise) {
+    pokemonCatalogPromise = fetchPokemonList(POKEMON_CATALOG_LIMIT)
+      .then(({ results }) => results)
+      .catch((error) => {
+        pokemonCatalogPromise = null;
+        throw error;
+      });
+  }
+
+  return pokemonCatalogPromise;
+};
+
+export const searchPokemonByName = async (query, signal) => {
+  const sanitizedQuery = String(query ?? '').trim().toLowerCase();
+  if (!sanitizedQuery) throw new ApiError('NOT_FOUND');
+  if (signal?.aborted) throw new ApiError('CANCELLED');
+
+  const catalog = await fetchPokemonCatalog();
+  if (signal?.aborted) throw new ApiError('CANCELLED');
+
+  return catalog.filter((pokemon) => pokemon.name.startsWith(sanitizedQuery));
 };
 
 export const fetchPokemonByNameOrId = async (query, signal) => {
