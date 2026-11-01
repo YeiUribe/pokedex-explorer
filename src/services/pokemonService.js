@@ -6,7 +6,6 @@ const POKEMON_CATALOG_LIMIT = 10000;
 
 let pokemonCatalogPromise;
 
-// Error con codigo semantico: el servicio informa el tipo, la UI decide el mensaje.
 export class ApiError extends Error {
   constructor(code, message) {
     super(message || code);
@@ -151,6 +150,5 @@ export const getPokemonDetail = async (query, signal) => {
   };
 };
 
-// Aliases conservados para los hooks y consumidores existentes.
 export const fetchPokemonList = getPokemonList;
 export const fetchPokemonByNameOrId = getPokemonDetail;

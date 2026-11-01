@@ -20,7 +20,6 @@ La aplicación permite:
 - React Navigation Native Stack
 - React Native Safe Area Context
 - PokéAPI
-- `fetch` nativo, sin Axios ni otras librerías HTTP externas
 
 ## Árbol de carpetas
 
@@ -60,10 +59,6 @@ pokedex-explorer/
 ├── package.json
 ├── LICENSE
 └── README.md
-```
-
-> `node_modules/` y `.expo/` son carpetas generadas localmente y no forman
-> parte de la estructura funcional documentada de la aplicación.
 
 ## Responsabilidad de cada archivo
 

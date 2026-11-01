@@ -3,7 +3,6 @@ import { fetchPokemonByNameOrId, searchPokemonByName } from '../services/pokemon
 import { messageForError } from '../utils/errors';
 
 // Busqueda de la pantalla de lista: devuelve el resultado para mostrarlo como tarjeta.
-// results === null significa "no hay busqueda activa" (se ve la lista paginada).
 //
 // Los nombres admiten prefijos; las consultas numericas siguen buscando un id exacto.
 export const usePokemonSearch = () => {

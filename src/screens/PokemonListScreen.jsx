@@ -77,8 +77,6 @@ export default function PokemonListScreen({ navigation }) {
 
   const keyExtractor = useCallback((item) => String(item.id), []);
 
-  // Se pasa el elemento ya renderizado (no la función) para que React no remonte
-  // el header en cada render y el buscador no pierda el foco ni el texto.
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <Text style={styles.title}>PokéDex Explorer</Text>

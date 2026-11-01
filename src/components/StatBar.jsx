@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 
-// Nombres legibles: la API devuelve hp, special-attack, special-defense, etc.
 const STAT_LABELS = {
   hp: 'HP',
   attack: 'ATAQUE',

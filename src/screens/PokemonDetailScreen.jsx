@@ -88,7 +88,6 @@ export default function PokemonDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.screen}>
-      {/* StatusBar clara porque el header de la pila es rojo */}
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.container}>
         {renderBackButton()}
@@ -98,7 +97,6 @@ export default function PokemonDetailScreen({ route, navigation }) {
         <Text style={styles.number}>{formattedNumber}</Text>
         <Text style={styles.name}>{formattedName}</Text>
 
-        {/* Tipos con el color definido en el tema */}
         <View style={styles.typesContainer}>
           {pokemon.types.map((type) => {
             const badgeColor = colors.types?.[type] || colors.primary;
@@ -122,7 +120,6 @@ export default function PokemonDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Estadísticas base con barra de progreso */}
         <View style={styles.statsContainer}>
           <Text style={styles.statsTitle}>Estadísticas Base</Text>
           {pokemon.stats.map((stat) => (

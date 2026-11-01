@@ -64,5 +64,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// memo: la tarjeta solo se re-renderiza si cambia su Pokémon o el handler.
 export default memo(PokemonCard);

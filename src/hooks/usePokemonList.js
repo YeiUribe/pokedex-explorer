@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPokemonList } from '../services/pokemonService';
 import { messageForError } from '../utils/errors';
 
-// Tamano de pagina unico: antes estaba hardcodeado en tres lugares.
 export const PAGE_SIZE = 20;
 
 export const usePokemonList = () => {

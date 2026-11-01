@@ -33,8 +33,6 @@ export default function AppNavigator() {
           component={PokemonDetailScreen}
           options={{
             title: 'Ficha del Pokémon',
-            // El detalle tiene su propio botón "Volver a la lista":
-            // se oculta el back del header para no duplicar controles.
             headerBackVisible: false,
             gestureEnabled: true,
           }}

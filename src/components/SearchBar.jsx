@@ -10,7 +10,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
-// Barra controlada: el texto vive en la pantalla, así no se pierde al re-renderizar la lista.
 export default function SearchBar({ value, onChangeText, onSearch, onClear, loading }) {
   return (
     <View style={styles.container}>
