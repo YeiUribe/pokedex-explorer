@@ -14,9 +14,10 @@ export default function AppNavigator() {
       <Stack.Navigator
         initialRouteName="PokemonList"
         screenOptions={{
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: '#FFFFFF',
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.textPrimary,
           headerTitleStyle: { fontWeight: 'bold' },
+          headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}
       >
@@ -24,7 +25,6 @@ export default function AppNavigator() {
           name="PokemonList"
           component={PokemonListScreen}
           options={{
-            // La lista maneja su propio encabezado con SafeAreaView
             headerShown: false,
           }}
         />

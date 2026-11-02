@@ -34,7 +34,6 @@ export default function PokemonListScreen({ navigation }) {
     clearSearch,
   } = usePokemonSearch();
 
-  // useState: la consulta vive aquí, no dentro de SearchBar, para que no se pierda
   // cuando la FlatList se vuelve a renderizar (paginación, errores, etc.).
   const [query, setQuery] = useState('');
   const [inputError, setInputError] = useState(null);
